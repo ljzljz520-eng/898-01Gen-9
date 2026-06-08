@@ -1,33 +1,117 @@
-/**
- * This is a user authentication API route demo.
- * Handle user registration, login, token management, etc.
- */
-import { Router, type Request, type Response } from 'express'
+import { Router, type Response } from 'express';
+import bcrypt from 'bcrypt';
+import type { AuthRequest } from '../middleware/auth.js';
+import { generateToken } from '../middleware/auth.js';
+import { findUserByEmail, createUser } from '../store/memoryStore.js';
+import type { LoginInput, RegisterInput, AuthResponse, User } from '../../shared/types';
 
-const router = Router()
+const router = Router();
 
-/**
- * User Login
- * POST /api/auth/register
- */
-router.post('/register', async (req: Request, res: Response): Promise<void> => {
-  // TODO: Implement register logic
-})
+function sanitizeUser(user: User): Omit<User, 'password'> {
+  const { password, ...safeUser } = user;
+  return safeUser;
+}
 
-/**
- * User Login
- * POST /api/auth/login
- */
-router.post('/login', async (req: Request, res: Response): Promise<void> => {
-  // TODO: Implement login logic
-})
+router.post('/register', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { name, email, password, role } = req.body as RegisterInput;
 
-/**
- * User Logout
- * POST /api/auth/logout
- */
-router.post('/logout', async (req: Request, res: Response): Promise<void> => {
-  // TODO: Implement logout logic
-})
+    if (!name || !email || !password || !role) {
+      res.status(400).json({ error: '请填写完整信息' });
+      return;
+    }
 
-export default router
+    if (password.length < 6) {
+      res.status(400).json({ error: '密码至少需要6位以上' });
+      return;
+    }
+
+    if (findUserByEmail(email)) {
+      res.status(400).json({ error: '该邮箱已被注册' });
+      return;
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = createUser({
+      name,
+      email,
+      password: hashedPassword,
+      role,
+    });
+
+    const token = generateToken(user.id);
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      sameSite: 'lax',
+    });
+
+    const response: AuthResponse = {
+      user: sanitizeUser(user),
+      token,
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Register error:', error);
+    res.status(500).json({ error: '注册失败，请稍后重试' });
+  }
+});
+
+router.post('/login', async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { email, password } = req.body as LoginInput;
+
+    if (!email || !password) {
+      res.status(400).json({ error: '请填写邮箱和密码' });
+      return;
+    }
+
+    const user = findUserByEmail(email);
+    if (!user) {
+      res.status(401).json({ error: '邮箱或密码错误' });
+      return;
+    }
+
+    const isValid = await bcrypt.compare(password, user.password);
+    if (!isValid) {
+      res.status(401).json({ error: '邮箱或密码错误' });
+      return;
+    }
+
+    const token = generateToken(user.id);
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      sameSite: 'lax',
+    });
+
+    const response: AuthResponse = {
+      user: sanitizeUser(user),
+      token,
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: '登录失败，请稍后重试' });
+  }
+});
+
+router.post('/logout', (req: AuthRequest, res: Response): void => {
+  res.clearCookie('token');
+  res.json({ message: '退出成功' });
+});
+
+router.get('/me', (req: AuthRequest, res: Response): void => {
+  if (req.user) {
+    res.json({ user: req.user });
+  } else {
+    res.status(401).json({ error: '未登录' });
+  }
+});
+
+export default router;

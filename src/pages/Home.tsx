@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Users, MessageSquare, Plus, TrendingUp } from 'lucide-react';
+import { BookOpen, Users, MessageSquare, Plus, TrendingUp, LogIn } from 'lucide-react';
 import { useReadingClubStore } from '../store/useReadingClubStore';
+import { useAuthStore } from '../store/useAuthStore';
 import BookCard from '../components/BookCard';
 import type { ReadingClub } from '../../shared/types';
 import { cn } from '../utils/helpers';
@@ -11,6 +12,7 @@ type FilterType = 'all' | 'ongoing' | 'ended';
 export default function Home() {
   const navigate = useNavigate();
   const { readingClubs, isLoading, fetchReadingClubs, fetchCandidateBooks } = useReadingClubStore();
+  const { isAuthenticated, user } = useAuthStore();
   const [filter, setFilter] = useState<FilterType>('all');
 
   useEffect(() => {
@@ -54,13 +56,23 @@ export default function Home() {
               每一本书都是一次心灵的旅行，让我们结伴同行。
             </p>
             <div className="flex flex-wrap gap-4">
-              <button
-                onClick={() => navigate('/create')}
-                className="bg-ochre-500 hover:bg-ochre-400 text-white px-8 py-3 rounded-lg font-medium transition-all hover:shadow-lg hover:shadow-ochre-500/30 active:scale-95 flex items-center gap-2"
-              >
-                <Plus className="w-5 h-5" />
-                创建共读
-              </button>
+              {!isAuthenticated ? (
+                <button
+                  onClick={() => navigate('/login', { state: { from: '/create' } })}
+                  className="bg-ochre-500 hover:bg-ochre-400 text-white px-8 py-3 rounded-lg font-medium transition-all hover:shadow-lg hover:shadow-ochre-500/30 active:scale-95 flex items-center gap-2"
+                >
+                  <LogIn className="w-5 h-5" />
+                  登录后创建
+                </button>
+              ) : user?.role === 'organizer' ? (
+                <button
+                  onClick={() => navigate('/create')}
+                  className="bg-ochre-500 hover:bg-ochre-400 text-white px-8 py-3 rounded-lg font-medium transition-all hover:shadow-lg hover:shadow-ochre-500/30 active:scale-95 flex items-center gap-2"
+                >
+                  <Plus className="w-5 h-5" />
+                  创建共读
+                </button>
+              ) : null}
               <button
                 onClick={() => document.getElementById('club-list')?.scrollIntoView({ behavior: 'smooth' })}
                 className="bg-white/10 hover:bg-white/20 text-white px-8 py-3 rounded-lg font-medium transition-all active:scale-95 backdrop-blur-sm"
@@ -146,15 +158,30 @@ export default function Home() {
               还没有读书会
             </h3>
             <p className="text-ink-700 mb-6">
-              成为第一个组织者，创建你的第一期共读吧！
+              {!isAuthenticated 
+                ? '登录后创建你的第一期共读吧！'
+                : user?.role === 'organizer'
+                  ? '成为第一个组织者，创建你的第一期共读吧！'
+                  : '请等待组织者创建读书会，或者注册成为组织者。'
+              }
             </p>
-            <button
-              onClick={() => navigate('/create')}
-              className="btn-primary inline-flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              创建共读
-            </button>
+            {!isAuthenticated ? (
+              <button
+                onClick={() => navigate('/login', { state: { from: '/create' } })}
+                className="btn-primary inline-flex items-center gap-2"
+              >
+                <LogIn className="w-4 h-4" />
+                登录后创建
+              </button>
+            ) : user?.role === 'organizer' ? (
+              <button
+                onClick={() => navigate('/create')}
+                className="btn-primary inline-flex items-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                创建共读
+              </button>
+            ) : null}
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

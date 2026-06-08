@@ -11,8 +11,10 @@ import {
   ThumbsUp,
   BookOpen,
   ChevronRight,
+  LogIn,
 } from 'lucide-react';
 import { useReadingClubStore } from '../store/useReadingClubStore';
+import { useAuthStore } from '../store/useAuthStore';
 import type { Review as ReviewType, CandidateBook } from '../../shared/types';
 import SpoilerBlock from '../components/SpoilerBlock';
 import { formatDate, getTypeLabel } from '../utils/helpers';
@@ -27,10 +29,11 @@ export default function Review() {
     fetchCandidateBooks,
     voteCandidateBook,
     fetchReadingClubs,
+    votedBookId,
   } = useReadingClubStore();
+  const { isAuthenticated } = useAuthStore();
 
   const [review, setReview] = useState<ReviewType | null>(null);
-  const [votedBooks, setVotedBooks] = useState<Set<string>>(new Set());
 
   const club = readingClubs.find(rc => rc.id === id);
 
@@ -45,12 +48,19 @@ export default function Review() {
   }, [id, fetchReview, fetchCandidateBooks, fetchReadingClubs, readingClubs.length]);
 
   const handleVote = async (bookId: string) => {
-    if (votedBooks.has(bookId)) return;
-    await voteCandidateBook(bookId);
-    setVotedBooks(prev => new Set([...prev, bookId]));
-    if (id) {
-      const updatedReview = await fetchReview(id);
-      setReview(updatedReview);
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: `/reading-club/${club!.id}/review` } });
+      return;
+    }
+    if (votedBookId) return;
+    try {
+      await voteCandidateBook(bookId);
+      if (id) {
+        const updatedReview = await fetchReview(id);
+        setReview(updatedReview);
+      }
+    } catch (error) {
+      // Error handled by store
     }
   };
 
@@ -256,7 +266,8 @@ export default function Review() {
               book={book}
               rank={index + 1}
               totalVotes={totalVotes}
-              isVoted={votedBooks.has(book.id)}
+              isVoted={votedBookId === book.id}
+              isAuthenticated={isAuthenticated}
               onVote={() => handleVote(book.id)}
             />
           ))}
@@ -281,10 +292,11 @@ interface CandidateBookCardProps {
   rank: number;
   totalVotes: number;
   isVoted: boolean;
+  isAuthenticated: boolean;
   onVote: () => void;
 }
 
-function CandidateBookCard({ book, rank, totalVotes, isVoted, onVote }: CandidateBookCardProps) {
+function CandidateBookCard({ book, rank, totalVotes, isVoted, isAuthenticated, onVote }: CandidateBookCardProps) {
   const percentage = totalVotes > 0 ? (book.votes / totalVotes) * 100 : 0;
   const medals = ['🥇', '🥈', '🥉'];
 
@@ -337,13 +349,18 @@ function CandidateBookCard({ book, rank, totalVotes, isVoted, onVote }: Candidat
         onClick={onVote}
         disabled={isVoted}
         className={cn(
-          'w-full py-2 rounded-lg font-medium text-sm transition-all',
+          'w-full py-2 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-1',
           isVoted
             ? 'bg-green-100 text-green-800 cursor-default'
             : 'bg-ochre-500 text-white hover:bg-ochre-400 active:scale-95'
         )}
       >
-        {isVoted ? '已投票' : '投它一票'}
+        {isVoted ? '已投票' : (
+          <>
+            {!isAuthenticated && <LogIn className="w-4 h-4" />}
+            {isAuthenticated ? '投它一票' : '登录投票'}
+          </>
+        )}
       </button>
     </div>
   );

@@ -12,8 +12,8 @@ import {
   Send,
 } from 'lucide-react';
 import { useReadingClubStore } from '../store/useReadingClubStore';
+import { useAuthStore } from '../store/useAuthStore';
 import type { CreateReadingClubInput } from '../../shared/types';
-import { generateId } from '../utils/helpers';
 
 interface ChapterForm {
   title: string;
@@ -32,7 +32,8 @@ interface OfflineEventForm {
 
 export default function CreateReadingClub() {
   const navigate = useNavigate();
-  const { createReadingClub, currentUser } = useReadingClubStore();
+  const { createReadingClub } = useReadingClubStore();
+  const { user } = useAuthStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [bookInfo, setBookInfo] = useState({
@@ -134,8 +135,8 @@ export default function CreateReadingClub() {
             description: e.description,
             attendeeCount: 0,
           })),
-        organizerId: currentUser.id,
-        organizerName: currentUser.name,
+        organizerId: user!.id,
+        organizerName: user!.name,
       };
 
       const newClub = await createReadingClub(input);

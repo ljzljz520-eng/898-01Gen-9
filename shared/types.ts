@@ -69,8 +69,37 @@ export interface CandidateBook {
   title: string;
   author: string;
   coverImage: string;
+  description: string;
   votes: number;
 }
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+  role: 'organizer' | 'member';
+  createdAt: string;
+}
+
+export interface AuthResponse {
+  user: Omit<User, 'password'>;
+  token: string;
+}
+
+export interface LoginInput {
+  email: string;
+  password: string;
+}
+
+export interface RegisterInput {
+  name: string;
+  email: string;
+  password: string;
+  role: 'organizer' | 'member';
+}
+
+export type DiscussionType = 'comment' | 'question' | 'excerpt' | 'all';
 
 export interface CreateReadingClubInput {
   book: Omit<Book, 'id'>;
@@ -79,5 +108,3 @@ export interface CreateReadingClubInput {
   organizerId: string;
   organizerName: string;
 }
-
-export type DiscussionType = 'comment' | 'question' | 'excerpt' | 'all';

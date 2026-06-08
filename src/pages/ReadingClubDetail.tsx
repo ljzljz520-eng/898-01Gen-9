@@ -13,8 +13,10 @@ import {
   StopCircle,
   BarChart3,
   User,
+  LogIn,
 } from 'lucide-react';
 import { useReadingClubStore } from '../store/useReadingClubStore';
+import { useAuthStore } from '../store/useAuthStore';
 import ChapterTimeline from '../components/ChapterTimeline';
 import DiscussionCard from '../components/DiscussionCard';
 import DiscussionForm from '../components/DiscussionForm';
@@ -31,15 +33,15 @@ export default function ReadingClubDetail() {
     addDiscussion,
     likeDiscussion,
     endReadingClub,
-    currentUser,
   } = useReadingClubStore();
+  const { user, isAuthenticated } = useAuthStore();
 
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
   const [discussionType, setDiscussionType] = useState<DiscussionType>('all');
   const [showDiscussionForm, setShowDiscussionForm] = useState(false);
 
   const club = readingClubs.find(rc => rc.id === id);
-  const isOrganizer = club && currentUser.id === club.organizerId;
+  const isOrganizer = club && user?.id === club.organizerId;
 
   useEffect(() => {
     if (readingClubs.length === 0) {
@@ -299,13 +301,23 @@ export default function ReadingClubDetail() {
             </h2>
 
             {status === 'ongoing' && !showDiscussionForm && (
-              <button
-                onClick={() => setShowDiscussionForm(true)}
-                className="btn-primary flex items-center gap-1.5 text-sm"
-              >
-                <Plus className="w-4 h-4" />
-                发布讨论
-              </button>
+              isAuthenticated ? (
+                <button
+                  onClick={() => setShowDiscussionForm(true)}
+                  className="btn-primary flex items-center gap-1.5 text-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  发布讨论
+                </button>
+              ) : (
+                <button
+                  onClick={() => navigate('/login', { state: { from: `/reading-club/${club.id}` } })}
+                  className="btn-primary flex items-center gap-1.5 text-sm"
+                >
+                  <LogIn className="w-4 h-4" />
+                  登录后发表
+                </button>
+              )
             )}
           </div>
 
@@ -352,13 +364,23 @@ export default function ReadingClubDetail() {
                   : '快来分享你的阅读感受吧！'}
               </p>
               {status === 'ongoing' && !showDiscussionForm && (
-                <button
-                  onClick={() => setShowDiscussionForm(true)}
-                  className="btn-primary inline-flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  发布讨论
-                </button>
+                isAuthenticated ? (
+                  <button
+                    onClick={() => setShowDiscussionForm(true)}
+                    className="btn-primary inline-flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    发布讨论
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => navigate('/login', { state: { from: `/reading-club/${club.id}` } })}
+                    className="btn-primary inline-flex items-center gap-2"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    登录后发表
+                  </button>
+                )
               )}
             </div>
           ) : (
